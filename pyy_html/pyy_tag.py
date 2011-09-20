@@ -77,6 +77,9 @@ class pyy_tag(object):
     '''
     Add new child tags.
     '''
+    if self.is_single and args:
+      raise ValueError('%s cannot contain child nodes' % type(self).__name__)
+
     for obj in args:
       if isinstance(obj, numbers.Number):
         # Convert to string so we fall into next if block

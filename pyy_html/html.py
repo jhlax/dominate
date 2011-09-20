@@ -59,6 +59,7 @@ class b           (html_tag): pass
 class bb          (html_tag): pass
 class base        (single):   pass
 class basefont    (single):   pass
+class bdi         (html_tag): pass
 class bdo         (html_tag): pass
 class big         (html_tag): pass
 class blockquote  (html_tag): pass
@@ -182,6 +183,7 @@ class u           (html_tag): pass
 class ul          (html_tag): pass
 class var         (html_tag): pass
 class video       (html_tag): pass
+class wbr         (html_tag): pass
 class xmp         (html_tag): pass
 
 underscored_classes = set(['del', 'input', 'map', 'object'])

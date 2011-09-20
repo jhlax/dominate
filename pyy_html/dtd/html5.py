@@ -16,6 +16,8 @@ Public License along with pyy.  If not, see
 <http://www.gnu.org/licenses/>.
 '''
 
+import types
+import pyy_html
 from pyy_html.html  import *
 from dtd            import *
 
@@ -37,37 +39,141 @@ EVENTS = set([
   'onshow', 'onstalled', 'onsubmit', 'onsuspend', 'ontimeupdate',
   'onvolumechange', 'onwaiting'])
 
-#Elements
+# Elements
+# http://www.w3.org/TR/html5/content-models.html#kinds-of-content
+
+SECTIONING  = set([article, aside, nav, section])
+
+HEADING     = set([h1, h2, h3, h4, h5, h6, hgroup])
+
+PHRASING    = set([a, abbr, area, audio, b, bdi, bdo, br, button, canvas, cite,
+    code, command, datalist, del_, dfn, em, embed, i, iframe, img, input_, ins,
+    kbd, keygen, label, map_, mark, math, meter, noscript, object_, output,
+    progress, q, ruby, s, samp, script, select, small, span, strong, sub, sup,
+    svg, textarea, time, u, var, video, wbr, basestring])
+
+EMBEDDED    = set([audio, canvas, embed, iframe, img, math, object_,svg, video])
+
 METADATA    = set([
   comment, base, command, link, meta, noscript, script, style, title])
 
+INTERACTIVE = set([a, audio, button, details, embed, iframe, img, input_,keygen,
+  label, menu, object_, select, textarea, video])
+
 FLOW        = set([
-  comment, a, abbr, address, area, article, aside, audio, b, bdo, blockquote,
-  br, button, canvas, cite, code, command, datalist, del_, details, dfn, dialog,
-  div, dl, em, embed, fieldset, figure, footer, form, h1, h2, h3, h4, h5, h6,
-  header, hgroup, hr, i, iframe, img, input_, ins, kbd, keygen, label, link,
-  map, mark, math, menu, meta, meter, nav, noscript, object, ol, output, p, pre,
-  progress, q, ruby, samp, script, section, select, small, span, strong, style,
-  sub, sup, svg, table, textarea, time, ul, var, video, basestring])
+  a, abbr, address, area, article, aside, audio, b, bdi, bdo, blockquote, br,
+  button, canvas, cite, code, command, datalist, del_, details, dfn, div, dl,
+  em, embed, fieldset, figure, footer, form, h1, h2, h3, h4, h5, h6, header,
+  hgroup, hr, i, iframe, img, input_, ins, kbd, keygen, label, map_, mark, math,
+  menu, meter, nav, noscript, object_, ol, output, p, pre, progress, q, ruby,
+  s, samp, script, section, select, small, span, strong, style, sub, sup, svg,
+  table, textarea, time, u, ul, var, video, wbr, comment, basestring])
 
-SECTION     = set([comment, article, aside, nav, section])
-HEADING     = set([comment, h1, h2, h3, h4, h5, h6, hgroup])
-PHRASING    = set([
-  comment, a, abbr, area, audio, b, bdo, br, button, canvas, cite, code,
-  command, datalist, del_, dfn, em, embed, i, iframe, img, input_, ins, kbd,
-  keygen, label, link, map, mark, math, meta, meter, noscript, object, output,
-  progress, q, ruby, samp, script, select, small, span, strong, sub, sup, svg,
-  textarea, time, var, video, basestring])
+TRANSPARENT   = object()
 
-TRANSPARENT = set([
-  comment, a, audio, canvas, del_, ins, map_, noscript, object_, video,
-  basestring])
+
+
+class ValidationError(ValueError): pass
+
+VALIDATORS = {}
+
 
 
 class html5(dtd):
   docstring = '<!DOCTYPE html>'
 
-  valid = {
+  @classmethod
+  def validate(cls, tag, content_model=None):
+    return
+
+    validator = VALIDATORS[type(tag)]
+    content = validator.CONTENT
+
+    # check content
+    if content is TRANSPARENT:
+      if not content_model:
+        raise ValidationError('content model of TRANSPARENT element could not '
+            'be determined', tag)
+        content = content_model
+
+    if callable(content):
+      if not content(tag):
+        raise ValidationError
+
+    elif isinstance(content, set):
+      for child in tag.children:
+        if type(child) not in content:
+          raise ValidationError('%s cannot be a child of %s in this context' %
+              (type(child).__name__, type(tag).__name__))
+
+    else:
+      raise Exception
+
+    # check attributes
+    attributes  = validator.ATTRIBUTES
+    required    = validator.REQUIRED
+    if callable(attributes):
+      if not attributes(tag):
+        raise ValidationError
+
+    elif isinstance(attributes, set):
+      invalid = [attr for attr in tag.attributes if attr not in attributes]
+      if invalid:
+        raise ValidationError('%s element cannot contain the following '
+            'attributes: %s' % ', '.join(invalid))
+
+      missing = [attr for attr in required if attr not in tag.attributes]
+      if missing:
+        raise ValidationError('%s element must contain the following '
+            'attributes: %s' % ', '.join(missing))
+
+    else:
+      raise Exception
+
+    # check children
+    for child in tag.children:
+      if isinstance(child, html_tag):
+        cls.validate(child, content)
+
+
+class validmeta(type):
+  def __init__(cls, name, bases, dictx):
+    tagcls = getattr(pyy_html.html, name, None)
+    if tagcls:
+      VALIDATORS[tagcls] = cls
+      for k,v in dictx.items():
+        if isinstance(v, types.FunctionType):
+          dictx[k] = staticmethod(v)
+
+    super(validmeta, cls).__init__(name, bases, dictx)
+
+class valid(object):
+  __metaclass__ = validmeta
+  ATTRIBUTES  = GLOBAL
+  REQUIRED    = set()
+
+# tag rules
+class html(valid):
+  def validate(tag):
+    return map(type, tag.children) == [head, body]
+
+  ATTRIBUTES  = GLOBAL | set(['manifest'])
+  REQUIRED    = set()
+
+class head(valid):
+  CONTENT = METADATA
+
+class title(valid):
+  CONTENT = set([basestring])
+
+class base(valid):
+  ATTRIBUTES = GLOBAL | set(['href', 'target'])
+  def validate(tag):
+      return 'href' in tag.attributes or 'target' in tag.attributes
+
+
+
+valid = {
     #ROOT: http://www.w3.org/TR/html5/semantics.html#the-root-element
     html: {VALID: GLOBAL | set(['manifest']), CHILDREN: set([head, body])},
 
@@ -132,7 +238,7 @@ class html5(dtd):
     footer : {VALID   : GLOBAL,
               CHILDREN: FLOW ^ set([header, footer])},
     address: {VALID   : GLOBAL,
-              CHILDREN: FLOW ^ (SECTION | HEADING |
+              CHILDREN: FLOW ^ (SECTIONING | HEADING |
                 set([header, footer, address]))},
 
     #GROUPING: http://www.w3.org/TR/html5/semantics.html#grouping-content
@@ -161,7 +267,7 @@ class html5(dtd):
 
     #TEXT: http://www.w3.org/TR/html5/text-level-semantics.html#text-level-semantics
     a       : {VALID   : GLOBAL | set(['href', 'target', 'ping', 'rel', 'media', 'hreflang', 'type']),
-               CHILDREN: TRANSPARENT | FLOW | PHRASING}, # TODO XXX This is wrong. Transparent is not a class of elements
+               CHILDREN: FLOW | PHRASING}, # TODO XXX This is wrong. Transparent is not a class of elements
     em      : {VALID   : GLOBAL,
                CHILDREN: PHRASING},
     strong  : {VALID   : GLOBAL,
@@ -212,8 +318,8 @@ class html5(dtd):
                CHILDREN: PHRASING},
 
     #EDITS: http://www.w3.org/TR/html5/text-level-semantics.html#edits
-    ins : {VALID: GLOBAL | set(['cite', 'datetime']), CHILDREN: TRANSPARENT},
-    del_: {VALID: GLOBAL | set(['cite', 'datetime']), CHILDREN: TRANSPARENT},
+    ins : {VALID: GLOBAL | set(['cite', 'datetime']), CHILDREN: set()},
+    del_: {VALID: GLOBAL | set(['cite', 'datetime']), CHILDREN: set()},
 
     #EMBEDDED: http://www.w3.org/TR/html5/text-level-semantics.html#embedded-content-1
     figure: {VALID   : GLOBAL,
@@ -224,18 +330,18 @@ class html5(dtd):
              CHILDREN: set([str])},
     embed : {VALID   : GLOBAL | set(['src', 'type', 'width', 'height'])},
     object_:{VALID   : GLOBAL | set(['data', 'type', 'name', 'usemap', 'form', 'width', 'height']),
-             CHILDREN: TRANSPARENT | set([param])},
+             CHILDREN: set() | set([param])},
     param : {VALID   : GLOBAL | set(['name', 'value'])},
     video : {VALID   : GLOBAL | set(['src', 'poster', 'autobuffer', 'autoplay', 'loop', 'controls', 'width', 'height']),
-             CHILDREN: TRANSPARENT | set([source])},
+             CHILDREN: set() | set([source])},
     audio : {VALID   : GLOBAL | set(['src', 'autobuffer', 'autoplay', 'loop', 'controls']),
-             CHILDREN: TRANSPARENT | set([source])},
+             CHILDREN: set() | set([source])},
     source: {VALID   : GLOBAL | set(['src', 'type', 'media']),
              REQUIRED: set(['src'])},
     canvas: {VALID   : GLOBAL | set(['width', 'height']),
-             CHILDREN: TRANSPARENT},
+             CHILDREN: set()},
     map_  : {VALID   : GLOBAL | set(['name']),
-             CHILDREN: TRANSPARENT | set([area])},
+             CHILDREN: set() | set([area])},
     area  : {VALID   : GLOBAL | set(['alt', 'coords', 'shape', 'href', 'target', 'ping', 'rel', 'media', 'hreflang', 'type'])},
 
     #TABULAR: http://www.w3.org/TR/html5/tabular-data.html#tabular-data

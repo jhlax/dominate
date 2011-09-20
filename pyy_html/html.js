@@ -20,7 +20,7 @@ Y.use('json');
         complete: null,
         success: function(transaction, response, conn)
         {
-          if (!succ) return;
+          if (!succ) { return; }
           succ.call(ctx, U.load(response.responseText),
             transaction, response, conn);
         },
@@ -37,10 +37,10 @@ Y.use('json');
 
   U.get = function(url, succ) {
     return U.io('GET', url, null, null, succ);
-  }
+  };
   U.post = function(url, succ) {
     return U.io('POST', url, null, null, succ);
-  }
+  };
 
   /**
    * @method: foreach
@@ -301,22 +301,22 @@ Y.use('json');
   {
 
     var xy_dom = Y.DOM.getXY(dom);
-    if (!ancestor) return xy_dom;
+    if (!ancestor) { return xy_dom; }
     var xy_anc = Y.DOM.getXY(ancestor);
 
     return [
       xy_dom[0] - xy_anc[0] -
-        parseInt(Y.DOM.getComputedStyle(ancestor, "borderLeftWidth")),
+          parseInt(Y.DOM.getComputedStyle(ancestor, "borderLeftWidth"), 10),
       xy_dom[1] - xy_anc[1] -
-        parseInt(Y.DOM.getComputedStyle(ancestor, "borderTopWidth"))
+          parseInt(Y.DOM.getComputedStyle(ancestor, "borderTopWidth"), 10)
     ];
 
 
-    return U.vsub(U.vsub(Y.DOM.getXY(dom), Y.DOM.getXY(ancestor)),
-        // Remove the border of the ancestor if any.
-        U.map([Y.DOM.getComputedStyle(ancestor, "borderLeftWidth"),
-            Y.DOM.getComputedStyle(ancestor, "borderTopWidth")],
-            function(s) { return parseInt(s, 10); }));
+    // return U.vsub(U.vsub(Y.DOM.getXY(dom), Y.DOM.getXY(ancestor)),
+    //     // Remove the border of the ancestor if any.
+    //     U.map([Y.DOM.getComputedStyle(ancestor, "borderLeftWidth"),
+    //         Y.DOM.getComputedStyle(ancestor, "borderTopWidth")],
+    //         function(s) { return parseInt(s, 10); }));
   };
 
   H.get_size  = function(dom)
@@ -368,7 +368,7 @@ Y.use('json');
         h: dom.offsetHeight
       };
     // }
-  }
+  };
 
 
   /*global Node */
