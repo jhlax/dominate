@@ -15,6 +15,7 @@ class Server(object):
         self.routes = [];
         self.port = 8888
         self.cookie_secret = '%x' % random.getrandbits(256)
+        self.application = None
 
     def make_handler(self, method, func):
         class TornadoHandler(tornado.web.RequestHandler):
@@ -58,18 +59,19 @@ class Server(object):
             return func
         return f
 
-    def start(self, static_path=None):
+    def start(self, **kwargs):
         self.application = tornado.web.Application(
             self.routes,
-            gzip=True, debug=False, static_path=static_path,
+            gzip=True, debug=False,
             cookie_secret=self.cookie_secret,
+            **kwargs
         )
 
         self.application.listen(self.port)
         log.info('Server listening on :%d' % self.port)
 
-    def run(self, static_path=None):
-        self.start(static_path)
+    def run(self, **kwargs):
+        self.start(**kwargs)
         log.info('Running mainloop. Press ^C to exit')
 
         # for windows, since ^C won't interrupt the loop
@@ -79,7 +81,6 @@ class Server(object):
             tornado.ioloop.IOLoop.instance().start()
         except KeyboardInterrupt:
             log.info('Exiting')
-
 
 server  = Server()
 get     = server.get
@@ -99,4 +100,3 @@ if __name__ == '__main__':
         return 'Hi, %s' % username
 
     server.run()
-
