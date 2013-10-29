@@ -58,18 +58,18 @@ class Server(object):
             return func
         return f
 
-    def start(self):
+    def start(self, static_path=None):
         self.application = tornado.web.Application(
             self.routes,
-            gzip=True, debug=False,
+            gzip=True, debug=False, static_path=static_path,
             cookie_secret=self.cookie_secret,
         )
 
         self.application.listen(self.port)
         log.info('Server listening on :%d' % self.port)
 
-    def run(self):
-        self.start()
+    def run(self, static_path=None):
+        self.start(static_path)
         log.info('Running mainloop. Press ^C to exit')
 
         # for windows, since ^C won't interrupt the loop
