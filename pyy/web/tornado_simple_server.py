@@ -62,8 +62,7 @@ class Server(object):
     def start(self, **kwargs):
         self.application = tornado.web.Application(
             self.routes,
-            gzip=True, debug=False,
-            cookie_secret=self.cookie_secret,
+            gzip=True, cookie_secret=self.cookie_secret,
             **kwargs
         )
 
